@@ -10,7 +10,7 @@ The concert agent automatically tracks concerts for artists you follow on Spotif
 4. Fill in the details:
    - **App name**: Curator Concert Tracker
    - **App description**: Personal concert tracking
-   - **Redirect URI**: `http://localhost:8888/callback`
+   - **Redirect URI**: `http://127.0.0.1:8888/callback` ⚠️ **Important: Use 127.0.0.1, NOT localhost**
    - **APIs**: Select "Web API"
 5. Click **"Save"**
 6. You'll see your **Client ID** and **Client Secret** - copy these!
@@ -22,7 +22,7 @@ Edit your `.env` file and add:
 ```bash
 SPOTIFY_CLIENT_ID=your_client_id_here
 SPOTIFY_CLIENT_SECRET=your_client_secret_here
-SPOTIFY_REDIRECT_URI=http://localhost:8888/callback
+SPOTIFY_REDIRECT_URI=http://127.0.0.1:8888/callback
 ```
 
 ## Step 3: Enable Concert Agent
@@ -88,8 +88,9 @@ curl -X POST http://localhost:8000/run -H "Content-Type: application/json" -d '{
 - Restart the app after adding credentials
 
 **"Failed to authenticate"**
-- Check that redirect URI is exactly: `http://localhost:8888/callback`
+- Check that redirect URI is exactly: `http://127.0.0.1:8888/callback`
 - Make sure it matches in both the Spotify app settings AND your `.env`
+- ⚠️ **Important**: Spotify requires `127.0.0.1`, not `localhost`
 
 **"No artists found"**
 - Make sure you're following artists on Spotify
