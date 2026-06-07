@@ -7,6 +7,7 @@ from .config import load_config, CuratorConfig
 from .db import init_db, get_deals
 from .notifier import notify_deals
 from ..agents.steam_agent import SteamAgent
+from ..agents.concert_agent import ConcertAgent
 
 # Load environment variables
 load_dotenv()
@@ -15,6 +16,7 @@ load_dotenv()
 # Registry of all available agents
 AGENT_REGISTRY = {
     "steam": SteamAgent,
+    "concert": ConcertAgent,
 }
 
 

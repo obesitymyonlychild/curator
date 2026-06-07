@@ -121,6 +121,12 @@ def load_config() -> CuratorConfig:
                     enabled=True,
                     schedule="every_24h",
                     filters=AgentFilters(min_discount=10, min_rating=9.2, mac_only=True),
+                ),
+                AgentConfig(
+                    id="concert",
+                    enabled=False,  # Disabled by default until Spotify credentials are added
+                    schedule="every_24h",
+                    filters=AgentFilters(genres=["San Francisco, CA"]),  # Default location in genres field
                 )
             ],
             watchlist=[],

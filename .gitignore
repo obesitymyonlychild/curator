@@ -43,6 +43,9 @@ curator.db
 .env
 .env.local
 
+# Spotify cache
+.spotify_cache
+
 # Logs
 *.log
 

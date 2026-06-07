@@ -13,3 +13,6 @@ python-telegram-bot>=20.7
 
 # Utilities
 python-dotenv>=1.0.0
+
+# Concert tracking
+spotipy>=2.23.0
