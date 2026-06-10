@@ -72,12 +72,22 @@ class BaseAgent(ABC):
             return True
 
         # Get effective min_discount (agent > global)
-        min_discount = self.agent_config.filters.min_discount or self.config.global_min_discount
+        # If agent filter is explicitly set (including 0), use it; otherwise use global
+        if self.agent_config.filters.min_discount is not None:
+            min_discount = self.agent_config.filters.min_discount
+        else:
+            min_discount = self.config.global_min_discount
+
         if deal.discount_pct < min_discount:
             return False
 
         # Get effective min_rating (agent > global)
-        min_rating = self.agent_config.filters.min_rating or self.config.global_min_rating
+        # If agent filter is explicitly set, use it; otherwise use global
+        if self.agent_config.filters.min_rating is not None:
+            min_rating = self.agent_config.filters.min_rating
+        else:
+            min_rating = self.config.global_min_rating
+
         if deal.rating is not None and deal.rating < min_rating:
             return False
 

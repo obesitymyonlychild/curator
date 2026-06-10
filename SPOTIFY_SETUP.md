@@ -1,6 +1,6 @@
-# Spotify Concert Tracking Setup
+# Concert Tracking Setup
 
-The concert agent automatically tracks concerts for artists you follow on Spotify!
+The concert agent automatically tracks concerts for artists you follow on Spotify using the Ticketmaster API!
 
 ## Step 1: Create a Spotify App
 
@@ -15,17 +15,33 @@ The concert agent automatically tracks concerts for artists you follow on Spotif
 5. Click **"Save"**
 6. You'll see your **Client ID** and **Client Secret** - copy these!
 
-## Step 2: Add Credentials to .env
+## Step 2: Get Ticketmaster API Key
+
+1. Go to https://developer.ticketmaster.com/
+2. Click **"Get Your API Key"**
+3. Register for a free account
+4. Fill in the registration form:
+   - First/Last name
+   - Company: "Personal Project" (or your name)
+   - Company Website: Can use your GitHub profile URL
+   - App URL: "http://localhost:8000"
+5. Copy your **API Key**
+
+## Step 3: Add Credentials to .env
 
 Edit your `.env` file and add:
 
 ```bash
+# Spotify credentials
 SPOTIFY_CLIENT_ID=your_client_id_here
 SPOTIFY_CLIENT_SECRET=your_client_secret_here
 SPOTIFY_REDIRECT_URI=http://127.0.0.1:8888/callback
+
+# Ticketmaster API key
+TICKETMASTER_API_KEY=your_ticketmaster_api_key_here
 ```
 
-## Step 3: Enable Concert Agent
+## Step 4: Enable Concert Agent
 
 Edit `config.json` and set the concert agent to enabled:
 
@@ -44,7 +60,7 @@ Edit `config.json` and set the concert agent to enabled:
 }
 ```
 
-## Step 4: First Time Authentication
+## Step 5: First Time Authentication
 
 The first time you run the concert agent, it will:
 
@@ -56,7 +72,7 @@ The first time you run the concert agent, it will:
 
 After this one-time setup, the agent will remember your authorization.
 
-## Step 5: Test It!
+## Step 6: Test It!
 
 ```bash
 # Run the concert agent manually
@@ -70,7 +86,7 @@ curl -X POST http://localhost:8000/run -H "Content-Type: application/json" -d '{
 
 **Daily Process:**
 1. Fetches your followed artists from Spotify (all of them!)
-2. Checks Bandsintown for upcoming concerts
+2. Checks Ticketmaster for upcoming concerts
 3. Filters by your location (if specified)
 4. Saves new concerts to the database
 5. Sends email notifications for new findings
@@ -118,10 +134,29 @@ Add these secrets to your repository:
 **Option B**: Use a long-lived access pattern (simpler):
 The current implementation uses SpotifyOAuth which handles token refresh automatically.
 
+## GitHub Actions Setup
+
+Add these secrets to your repository:
+
+1. Go to: https://github.com/YOUR_USERNAME/curator/settings/secrets/actions
+2. Add:
+   - `SPOTIFY_CLIENT_ID`
+   - `SPOTIFY_CLIENT_SECRET`
+   - `TICKETMASTER_API_KEY`
+
+**Note**: GitHub Actions cannot do interactive OAuth, so you must authenticate locally first. The `.spotify_cache` file contains your refresh token. You have two options:
+
+**Option A**: Add the refresh token as a secret (more secure):
+1. After authenticating locally, find your refresh token in `.spotify_cache`
+2. Add it as `SPOTIFY_REFRESH_TOKEN` secret in GitHub
+
+**Option B**: Use a long-lived access pattern (simpler):
+The current implementation uses SpotifyOAuth which handles token refresh automatically.
+
 ## Cost
 
 - Spotify API: **Free** (50,000 requests/day)
-- Bandsintown API: **Free** (unlimited for personal use)
+- Ticketmaster API: **Free** (5,000 requests/day)
 - **Total**: **$0/month**
 
 Enjoy never missing a concert from your favorite artists again!

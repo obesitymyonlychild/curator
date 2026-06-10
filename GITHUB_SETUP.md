@@ -38,14 +38,6 @@ Add these secrets one by one:
 **Secret Name:** `ANTHROPIC_API_KEY`  
 **Value:** Your Anthropic API key from https://console.anthropic.com/
 
-### Optional (for Telegram notifications):
-
-**Secret Name:** `TELEGRAM_BOT_TOKEN`  
-**Value:** Your Telegram bot token
-
-**Secret Name:** `TELEGRAM_CHAT_ID`  
-**Value:** Your Telegram chat ID
-
 ## Step 3: Verify GitHub Actions
 
 After pushing your code and adding secrets:

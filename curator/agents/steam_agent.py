@@ -1,6 +1,7 @@
 """Steam deals agent."""
 import os
 import requests
+import time
 from typing import Optional
 from datetime import datetime
 
@@ -87,7 +88,31 @@ class SteamAgent(BaseAgent):
             specials_data = specials_response.json()
 
             if "specials" in specials_data:
-                for game in specials_data["specials"]["items"][:50]:  # Limit to 50
+                for game in specials_data["specials"]["items"]:  # Get all specials
+                    if game.get("discount_percent", 0) > 0:
+                        items.append(
+                            RawItem(
+                                external_id=str(game["id"]),
+                                name=game["name"],
+                                data=game,
+                            )
+                        )
+
+            # Fetch top sellers on sale
+            if "top_sellers" in specials_data:
+                for game in specials_data["top_sellers"]["items"]:
+                    if game.get("discount_percent", 0) > 0:
+                        items.append(
+                            RawItem(
+                                external_id=str(game["id"]),
+                                name=game["name"],
+                                data=game,
+                            )
+                        )
+
+            # Fetch new releases on sale
+            if "new_releases" in specials_data:
+                for game in specials_data["new_releases"]["items"]:
                     if game.get("discount_percent", 0) > 0:
                         items.append(
                             RawItem(
@@ -100,30 +125,56 @@ class SteamAgent(BaseAgent):
         except Exception as e:
             print(f"Error fetching Steam data: {e}")
 
-        return items
+        # Deduplicate by app ID
+        seen = set()
+        unique_items = []
+        for item in items:
+            if item.external_id not in seen:
+                seen.add(item.external_id)
+                unique_items.append(item)
 
-    def _get_game_details(self, app_id: str) -> Optional[dict]:
-        """Fetch detailed game info from Steam API.
+        print(f"Found {len(unique_items)} unique games on sale (from {len(items)} total)")
+        return unique_items
+
+    def _get_game_details(self, app_id: str, retries: int = 3) -> Optional[dict]:
+        """Fetch detailed game info from Steam API with retry logic.
 
         Args:
             app_id: Steam app ID
+            retries: Number of retry attempts
 
         Returns:
             Game details dict or None if failed
         """
-        try:
-            response = requests.get(
-                f"https://store.steampowered.com/api/appdetails?appids={app_id}",
-                timeout=10,
-            )
-            response.raise_for_status()
-            data = response.json()
+        for attempt in range(retries):
+            try:
+                # Add small delay to avoid rate limiting
+                if attempt > 0:
+                    time.sleep(0.5 * attempt)  # Exponential backoff: 0.5s, 1s, 1.5s
 
-            if app_id in data and data[app_id]["success"]:
-                return data[app_id]["data"]
+                response = requests.get(
+                    f"https://store.steampowered.com/api/appdetails?appids={app_id}",
+                    timeout=15,
+                )
+                response.raise_for_status()
+                data = response.json()
 
-        except Exception as e:
-            print(f"Error fetching game details for {app_id}: {e}")
+                if app_id in data and data[app_id]["success"]:
+                    return data[app_id]["data"]
+                elif app_id in data and not data[app_id]["success"]:
+                    # Game not found or unavailable, no point retrying
+                    return None
+
+            except requests.exceptions.Timeout:
+                if attempt < retries - 1:
+                    print(f"Timeout fetching details for {app_id}, retrying... (attempt {attempt + 1}/{retries})")
+                    continue
+            except Exception as e:
+                if attempt < retries - 1:
+                    print(f"Error fetching game details for {app_id}: {e}, retrying...")
+                    continue
+                else:
+                    print(f"Failed to fetch game details for {app_id} after {retries} attempts: {e}")
 
         return None
 
@@ -181,27 +232,34 @@ class SteamAgent(BaseAgent):
         game = item.data
         app_id = item.external_id
 
-        # Get detailed info
+        # Small delay to avoid rate limiting (100ms between games)
+        time.sleep(0.1)
+
+        # Get detailed info with retries
         details = self._get_game_details(app_id)
-        if not details:
-            # Use basic info from featured data
-            discount_pct = game.get("discount_percent", 0)
-            original_price = game.get("original_price", 0) / 100.0
-            sale_price = game.get("final_price", 0) / 100.0
-            mac_support = game.get("platforms", {}).get("mac", False)
-            rating = None
-            genre = "Other"
-        else:
-            # Use detailed info
+
+        # Extract platform support - try both sources
+        mac_support = False
+
+        if details:
+            # Prefer detailed API data
+            mac_support = details.get("platforms", {}).get("mac", False)
             discount_pct = game.get("discount_percent", 0)
             original_price = details.get("price_overview", {}).get("initial", 0) / 100.0
             sale_price = details.get("price_overview", {}).get("final", 0) / 100.0
-            mac_support = details.get("platforms", {}).get("mac", False)
 
             # Get rating from metacritic or Steam reviews
             rating = None
             if "metacritic" in details and "score" in details["metacritic"]:
                 rating = details["metacritic"]["score"] / 10.0
+            elif "recommendations" in details and "total" in details["recommendations"]:
+                # Use Steam review score as fallback
+                # Convert recommendations to approximate rating (rough estimate)
+                total_reviews = details["recommendations"]["total"]
+                if total_reviews > 100:  # Only trust games with enough reviews
+                    # Steam doesn't provide exact positive/negative split in appdetails
+                    # We'll parse from the featured data if available
+                    pass
 
             # Get genre
             genres = details.get("genres", [])
@@ -211,6 +269,31 @@ class SteamAgent(BaseAgent):
                 tags = [c["description"] for c in tags]
 
             genre = self._classify_genre(tags) if tags else "Other"
+        else:
+            # Fallback to basic info from featured data
+            discount_pct = game.get("discount_percent", 0)
+            original_price = game.get("original_price", 0) / 100.0
+            sale_price = game.get("final_price", 0) / 100.0
+
+            # Try to get platform from featured data
+            # Featured API sometimes includes platform in different formats
+            if "platforms" in game:
+                platforms = game["platforms"]
+                if isinstance(platforms, dict):
+                    mac_support = platforms.get("mac", False)
+                elif isinstance(platforms, str):
+                    # Sometimes it's a string like "windows,mac,linux"
+                    mac_support = "mac" in platforms.lower()
+
+            rating = None
+            genre = "Other"
+
+            # Log when we couldn't get detailed info
+            print(f"No detailed info for {item.name} ({app_id}), using featured data only")
+
+        # Log platform detection for debugging
+        platform_source = "detailed API" if details else "featured data"
+        print(f"{item.name}: Mac={mac_support} (from {platform_source})")
 
         # Skip free games or games with no discount
         if discount_pct == 0 or original_price == 0:

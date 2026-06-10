@@ -120,7 +120,7 @@ def load_config() -> CuratorConfig:
                     id="steam",
                     enabled=True,
                     schedule="every_24h",
-                    filters=AgentFilters(min_discount=10, min_rating=9.2, mac_only=True),
+                    filters=AgentFilters(min_discount=10, min_rating=7, mac_only=True),
                 ),
                 AgentConfig(
                     id="concert",

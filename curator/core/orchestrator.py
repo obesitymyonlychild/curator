@@ -83,10 +83,9 @@ def run_all(agent_ids: Optional[list[str]] = None) -> dict:
             recent_deals = get_deals(agent_id=agent_id, limit=result["deals_found"])
             new_deals.extend(recent_deals)
 
-    # Send notifications for all new deals
-    if new_deals:
-        print(f"Sending notifications for {len(new_deals)} new deals")
-        notify_deals(config, new_deals)
+    # Send notifications (daily summary even if no new deals)
+    print(f"Sending notifications for {len(new_deals)} new deals")
+    notify_deals(config, new_deals, results)
 
     return {
         "results": results,

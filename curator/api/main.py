@@ -1,6 +1,8 @@
 """FastAPI server for Curator dashboard."""
 from typing import Optional
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from curator.core.config import load_config, save_config, AgentFilters, WatchlistItem
@@ -49,9 +51,12 @@ class RunAgentRequest(BaseModel):
 
 
 # Endpoints
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    """Root endpoint."""
+    """Serve dashboard HTML."""
+    dashboard_path = Path(__file__).parent / "dashboard.html"
+    if dashboard_path.exists():
+        return dashboard_path.read_text()
     return {"message": "Curator API", "version": "1.0.0"}
 
 
